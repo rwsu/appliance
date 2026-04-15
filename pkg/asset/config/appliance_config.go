@@ -389,6 +389,12 @@ func (a *ApplianceConfig) GetRelease() (string, string, error) {
 				return "", "", nil
 			}
 			releaseDigest = strings.Trim(releaseDigest, "'")
+			// Strip the tag before appending digest to avoid producing
+			// a "tag@digest" reference (e.g. image:tag@sha256:...) which
+			// fails the assisted-installer agent's image validation regex.
+			if idx := strings.LastIndex(releaseImage, ":"); idx > strings.LastIndex(releaseImage, "/") {
+				releaseImage = releaseImage[:idx]
+			}
 			releaseImage = fmt.Sprintf("%s@%s", releaseImage, releaseDigest)
 		}
 		logrus.Debugf("Release image: %s", releaseImage)
