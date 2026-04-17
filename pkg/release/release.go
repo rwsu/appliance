@@ -91,8 +91,11 @@ func (r *release) ExtractFile(image string, filename string) (string, error) {
 }
 
 func (r *release) GetImageFromRelease(imageName string) (string, error) {
-	configPath := r.ApplianceConfig.GetPullSecretPath()
-	cmd := fmt.Sprintf(templateGetImage, configPath, imageName, swag.StringValue(r.ApplianceConfig.Config.OcpRelease.URL))
+	pullSecretPath, err := config.GetPullSecretPath()
+	if err != nil {
+		return "", err
+	}
+	cmd := fmt.Sprintf(templateGetImage, pullSecretPath, imageName, swag.StringValue(r.ApplianceConfig.Config.OcpRelease.URL))
 
 	logrus.Debugf("Fetching image from OCP release (%s)", cmd)
 	image, err := r.execute(cmd)
@@ -149,10 +152,13 @@ func (r *release) fixImageReference(imageRef, releaseURL string) (string, error)
 }
 
 func (r *release) extractFileFromImage(image, file, outputDir string) (string, error) {
-	configPath := r.ApplianceConfig.GetPullSecretPath()
-	cmd := fmt.Sprintf(templateImageExtract, configPath, file, outputDir, image)
+	pullSecretPath, err := config.GetPullSecretPath()
+	if err != nil {
+		return "", err
+	}
+	cmd := fmt.Sprintf(templateImageExtract, pullSecretPath, file, outputDir, image)
 	logrus.Debugf("extracting %s to %s, %s", file, outputDir, cmd)
-	_, err := retry.Do(OcDefaultTries, OcDefaultRetryDelay, r.execute, cmd)
+	_, err = retry.Do(OcDefaultTries, OcDefaultRetryDelay, r.execute, cmd)
 	if err != nil {
 		return "", err
 	}
@@ -167,9 +173,11 @@ func (r *release) extractFileFromImage(image, file, outputDir string) (string, e
 }
 
 func (r *release) ExtractCommand(command string, dest string) (string, error) {
-	releaseURL := *r.ApplianceConfig.Config.OcpRelease.URL
-	configPath := r.ApplianceConfig.GetPullSecretPath()
-	cmd := fmt.Sprintf(templateExtractCmd, configPath, command, dest, releaseURL)
+	pullSecretPath, err := config.GetPullSecretPath()
+	if err != nil {
+		return "", err
+	}
+	cmd := fmt.Sprintf(templateExtractCmd, pullSecretPath, command, dest, *r.ApplianceConfig.Config.OcpRelease.URL)
 
 	logrus.Debugf("extracting %s to %s, %s", command, dest, cmd)
 	stdout, err := r.execute(cmd)
@@ -215,8 +223,11 @@ func (r *release) mirrorImages(imageSetFile, blockedImages, additionalImages, op
 
 		tempDir = filepath.Join(r.EnvConfig.TempDir, "oc-mirror")
 		registryPort := swag.IntValue(r.ApplianceConfig.Config.ImageRegistry.Port)
-		configPath := r.ApplianceConfig.GetPullSecretPath()
-		cmd := fmt.Sprintf(ocMirror, configPath, imageSetFilePath, registryPort, tempDir)
+		pullSecretPath, err := config.GetPullSecretPath()
+		if err != nil {
+			return err
+		}
+		cmd := fmt.Sprintf(ocMirror, pullSecretPath, imageSetFilePath, registryPort, tempDir)
 
 		logrus.Debugf("Fetching image from OCP release (%s)", cmd)
 		result, err := r.execute(cmd)
